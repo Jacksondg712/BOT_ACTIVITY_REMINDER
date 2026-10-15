@@ -1,0 +1,40 @@
+{
+  "_comment": "Configuracion del recordatorio de actividades. Editar aqui sin tocar codigo. Los secretos (Salesforce, Slack) y los correos de prueba van en .env.",
+
+  "timezone": "America/Bogota",
+
+  "_comment_tasks_url": "Link de Salesforce que se usa en {url_tareas} ('Ver mis tareas' y '...y N mas'). Vacio = pagina de inicio de Tareas.",
+  "salesforce_tasks_url": "https://openeducation.lightning.force.com/lightning/o/Task/list?filterName=Overdue_Tasks",
+
+  "_comment_executives": "Quienes son 'ejecutivos' en PRODUCCION (TEST_MODE=false): usuarios activos de Salesforce cuyo Title este en esta lista. En modo prueba se ignora y se usan solo Ejecutivotest1..3 del .env. Su lider es el Manager del usuario en Salesforce.",
+  "executive_titles": ["Sales Development Representative"],
+
+  "_comment_overdue": "Vencida = Task abierta (IsClosed = false) con ActivityDate anterior a hoy. Del dia = Task abierta con ActivityDate = hoy. 'Hoy' se calcula en 'timezone'.",
+  "_comment_max_items": "Cuantas actividades se listan por seccion en el mensaje. El total siempre se muestra; si hay mas, se agrega la linea 'mas_items' de message_templates.json. Slack no permite mensajes gigantes, no subir de ~25.",
+  "max_overdue_items": 10,
+  "max_today_items": 15,
+
+  "_comment_overdue_order": "Que vencidas listar primero: 'newest_first' (las que vencieron mas recientemente, las mas accionables) u 'oldest_first'.",
+  "overdue_order": "newest_first",
+
+  "_comment_send_when_empty": "true = enviar el recordatorio aunque el ejecutivo no tenga vencidas ni tareas de hoy (le llega el mensaje de 'todo al dia').",
+  "send_when_empty": true,
+
+  "leaders": {
+    "_comment": "Resumen a cada lider con la cantidad de vencidas de sus personas a cargo. En modo prueba va al canal de pruebas + Ejecutivotestsend1, nunca al lider real.",
+    "enabled": false,
+    "_comment_skip_zero": "true = no incluir en el resumen a los ejecutivos con 0 vencidas.",
+    "hide_members_without_overdue": false
+  },
+
+  "schedule": {
+    "_comment": "Solo aplica con 'python main.py --schedule'. Horas en 'timezone' a las que se envia el recordatorio.",
+    "times": ["08:00"],
+    "business_days_only": true,
+    "_comment_catchup": "Si el bot estaba apagado a la hora programada y arranca despues, todavia envia el pendiente si han pasado como maximo estos minutos.",
+    "catchup_minutes": 60
+  },
+
+  "_comment_delay": "Pausa entre mensajes de Slack para no chocar con el rate limit de chat.postMessage (~1 por segundo por canal).",
+  "seconds_between_messages": 1.2
+}

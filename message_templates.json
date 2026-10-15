@@ -1,0 +1,58 @@
+{
+  "_comment": "Formatos de los mensajes de Slack. Se pueden editar libremente. Los textos entre llaves {asi} se reemplazan por datos reales: solo se pueden usar los listados en cada '_variables'. Formato Slack mrkdwn: *negrita*, _cursiva_, ~tachado~, <url|texto> para enlaces, :emoji: para emojis. Para escribir una llave literal usar {{ o }}.",
+
+  "ejecutivo": {
+    "_variables": "nombre, nombre_completo, email, fecha, fecha_hora, total_vencidas, total_hoy, url_tareas",
+    "header": "⏰ Recordatorio de actividades — {fecha}",
+    "saludo": "Hola *{nombre}* 👋, este es tu resumen de actividades en Salesforce:",
+    "resumen": ":red_circle: *Vencidas:* {total_vencidas}      :large_blue_circle: *Para hoy:* {total_hoy}",
+
+    "titulo_vencidas": ":red_circle: *Actividades vencidas ({total_vencidas})*",
+    "sin_vencidas": ":white_check_mark: No tienes actividades vencidas. ¡Bien hecho!",
+
+    "titulo_hoy": ":large_blue_circle: *Tareas para hoy ({total_hoy})*",
+    "sin_hoy": "No tienes tareas programadas para hoy.",
+
+    "pie": "<{url_tareas}|Ver mis tareas en Salesforce> · _Mensaje automático de BOT_ACTIVITY_REMINDER · {fecha_hora}_",
+
+    "_comment_texto_notificacion": "Texto plano que se ve en la notificacion push / vista previa de Slack.",
+    "texto_notificacion": "Tienes {total_vencidas} actividades vencidas y {total_hoy} tareas para hoy"
+  },
+
+  "actividad": {
+    "_variables": "asunto, url, relacionado, fecha_vencimiento, dias_vencida, estado, prioridad, tipo (en mas_items: restantes, url_tareas)",
+    "item_vencida": "• <{url}|{asunto}> — {relacionado} · venció el {fecha_vencimiento} (_{dias_vencida}_)",
+    "item_hoy": "• <{url}|{asunto}> — {relacionado} · _{estado}_",
+    "mas_items": "_…y {restantes} más. <{url_tareas}|Ver todas en Salesforce>_",
+    "sin_relacionado": "Sin registro relacionado",
+    "sin_asunto": "(sin asunto)",
+    "dias_singular": "hace 1 día",
+    "dias_plural": "hace {n} días"
+  },
+
+  "lider": {
+    "_variables": "nombre, nombre_completo, email, fecha, fecha_hora, total_vencidas, total_hoy, total_miembros",
+    "header": "📊 Actividades vencidas de tu equipo — {fecha}",
+    "saludo": "Hola *{nombre}*, este es el estado de las actividades de tu equipo (personas a cargo: {total_miembros}):",
+    "total_equipo": "*Total del equipo:* :red_circle: {total_vencidas} vencidas · :large_blue_circle: {total_hoy} para hoy",
+
+    "_variables_miembro": "ejecutivo, email_ejecutivo, total_vencidas, total_hoy",
+    "item_miembro": "• *{ejecutivo}*: {total_vencidas} vencidas · {total_hoy} para hoy",
+    "sin_pendientes": ":white_check_mark: Nadie de tu equipo tiene actividades vencidas.",
+
+    "pie": "_Mensaje automático de BOT_ACTIVITY_REMINDER · {fecha_hora}_",
+    "texto_notificacion": "Tu equipo tiene {total_vencidas} actividades vencidas"
+  },
+
+  "modo_prueba": {
+    "_variables": "destinatario, email_destinatario, tipo_mensaje",
+    "_comment": "Aviso que se antepone a cada mensaje mientras TEST_MODE=true, para saber a quien le habria llegado en produccion.",
+    "banner": ":test_tube: *[PRUEBA]* Mensaje de {tipo_mensaje} que en producción iría a *{destinatario}* ({email_destinatario})",
+    "tipo_ejecutivo": "recordatorio de ejecutivo",
+    "tipo_lider": "resumen de líder"
+  },
+
+  "_comment_formato_fecha": "Formato de {fecha} y {fecha_vencimiento} (codigos strftime de Python: %d dia, %m mes, %Y año, %H hora, %M minutos).",
+  "formato_fecha": "%d/%m/%Y",
+  "formato_fecha_hora": "%d/%m/%Y %H:%M hora Bogotá"
+}

@@ -32,22 +32,46 @@
 
   "lider": {
     "_variables": "nombre, nombre_completo, email, fecha, fecha_hora, total_vencidas, total_hoy, total_miembros",
-    "header": "📊 Actividades vencidas de tu equipo — {fecha}",
+    "header": "📊 Actividades de tu equipo — {fecha}",
     "saludo": "Hola *{nombre}*, este es el estado de las actividades de tu equipo (personas a cargo: {total_miembros}):",
     "total_equipo": "*Total del equipo:* :red_circle: {total_vencidas} vencidas · :large_blue_circle: {total_hoy} para hoy",
 
     "_variables_miembro": "ejecutivo, email_ejecutivo, total_vencidas, total_hoy",
-    "item_miembro": "• *{ejecutivo}*: {total_vencidas} vencidas · {total_hoy} para hoy",
+    "item_miembro": "• *{ejecutivo}*: :red_circle: {total_vencidas} vencidas · :large_blue_circle: {total_hoy} para hoy",
+
+    "_comment_detalle_miembro": "Breve detalle debajo de cada ejecutivo (cuantas, en reminder_config.json → leaders.max_tasks_per_member; 0 = solo totales). Variables: las de 'actividad' (asunto, url, relacionado, fecha_vencimiento, dias_vencida, estado, prioridad, tipo); en mas_*: restantes.",
+    "item_vencida_miembro": "      ◦ :red_circle: <{url}|{asunto}> — {relacionado} · _{dias_vencida}_",
+    "item_hoy_miembro": "      ◦ :large_blue_circle: <{url}|{asunto}> — {relacionado} · _{estado}_",
+    "mas_vencidas_miembro": "      _…y {restantes} vencidas más_",
+    "mas_hoy_miembro": "      _…y {restantes} para hoy más_",
     "sin_pendientes": ":white_check_mark: Nadie de tu equipo tiene actividades vencidas.",
 
     "pie": "_Mensaje automático de BOT_ACTIVITY_REMINDER · {fecha_hora}_",
     "texto_notificacion": "Tu equipo tiene {total_vencidas} actividades vencidas"
   },
 
+  "canal": {
+    "_comment": "Resumen general que se publica en un canal: cada lider con el total de vencidas de su equipo y, debajo, cada ejecutivo a su cargo.",
+    "_variables": "fecha, fecha_hora, total_vencidas, total_hoy, total_lideres, total_ejecutivos",
+    "header": "📋 Resumen de actividades por líder — {fecha}",
+    "intro": "Estado de las actividades en Salesforce por equipo · Líderes: {total_lideres} · Ejecutivos: {total_ejecutivos}",
+    "total_general": "*Total general:* :red_circle: {total_vencidas} vencidas · :large_blue_circle: {total_hoy} para hoy",
+
+    "_variables_lider": "lider, email_lider, total_vencidas, total_hoy, total_miembros",
+    "item_lider": "*{lider}* — equipo de {total_miembros}: :red_circle: {total_vencidas} vencidas · :large_blue_circle: {total_hoy} para hoy",
+    "_variables_miembro": "ejecutivo, email_ejecutivo, total_vencidas, total_hoy",
+    "item_miembro": "      ◦ {ejecutivo}: {total_vencidas} vencidas · {total_hoy} para hoy",
+    "sin_lider": "Sin líder asignado",
+
+    "pie": "_Mensaje automático de BOT_ACTIVITY_REMINDER · {fecha_hora}_",
+    "texto_notificacion": "Resumen de actividades por líder: {total_vencidas} vencidas y {total_hoy} para hoy"
+  },
+
   "modo_prueba": {
     "_variables": "destinatario, email_destinatario, tipo_mensaje",
     "_comment": "Aviso que se antepone a cada mensaje mientras TEST_MODE=true, para saber a quien le habria llegado en produccion.",
     "banner": ":test_tube: *[PRUEBA]* Mensaje de {tipo_mensaje} que en producción iría a *{destinatario}* ({email_destinatario})",
+    "banner_canal": ":test_tube: *[PRUEBA]* Resumen general que en producción iría al canal {canal}",
     "tipo_ejecutivo": "recordatorio de ejecutivo",
     "tipo_lider": "resumen de líder"
   },

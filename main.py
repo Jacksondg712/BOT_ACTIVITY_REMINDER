@@ -7,7 +7,7 @@ Uso:
     python main.py --check        # solo verifica conexion a Salesforce y Slack
 
 Filtros:
-    --solo ejecutivos | lideres   # enviar solo un tipo de mensaje
+    --solo ejecutivos | lideres | canal   # enviar solo un tipo de mensaje
     --forzar                      # enviar aunque hoy no sea dia habil
 """
 
@@ -73,7 +73,7 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="mostrar los mensajes sin enviarlos")
     parser.add_argument("--schedule", action="store_true", help="quedar corriendo y enviar a las horas programadas")
     parser.add_argument("--check", action="store_true", help="verificar conexion a Salesforce y Slack")
-    parser.add_argument("--solo", choices=["ejecutivos", "lideres"], help="enviar solo un tipo de mensaje")
+    parser.add_argument("--solo", choices=["ejecutivos", "lideres", "canal"], help="enviar solo un tipo de mensaje")
     parser.add_argument("--forzar", action="store_true", help="enviar aunque hoy no sea dia habil")
     args = parser.parse_args()
 
@@ -98,13 +98,14 @@ def main() -> int:
         logger.info("Hoy no es dia habil (%s): no se envia nada. Usar --forzar para enviar igual.", reason)
         return 0
 
-    include_executives = args.solo != "lideres"
-    include_leaders = True if args.solo == "lideres" else (False if args.solo == "ejecutivos" else None)
+    # Sin --solo: ejecutivos siempre; lideres y canal segun reminder_config.json.
+    only = args.solo
     summary = asyncio.run(
         run_reminder(
             dry_run=args.dry_run,
-            include_executives=include_executives,
-            include_leaders=include_leaders,
+            include_executives=only in (None, "ejecutivos"),
+            include_leaders=(only == "lideres") if only else None,
+            include_channel=(only == "canal") if only else None,
         )
     )
     return 1 if summary.failed else 0

@@ -47,6 +47,7 @@ python -m venv .venv
 .venv\Scripts\python main.py --dry-run      # muestra los mensajes en consola, NO envía
 .venv\Scripts\python main.py                # envía el recordatorio ahora (una vez)
 .venv\Scripts\python main.py --solo lideres # solo el resumen de líderes
+.venv\Scripts\python main.py --solo canal   # solo el resumen general en el canal
 .venv\Scripts\python main.py --forzar       # envía aunque hoy no sea día hábil
 .venv\Scripts\python main.py --schedule     # queda corriendo y envía a las horas programadas
 .venv\Scripts\python -m pytest -q           # pruebas
@@ -78,6 +79,7 @@ Después de editar, revisar con `python main.py --dry-run`.
 | `max_overdue_items` / `max_today_items` | Cuántas actividades listar por sección |
 | `overdue_order` | `newest_first` (las vencidas más recientes primero) u `oldest_first` |
 | `send_when_empty` | Enviar o no el mensaje a quien no tiene pendientes |
+| `channel_summary` | Resumen general por líder en un canal (`enabled`, `channel_id`, `show_members`) |
 | `leaders.enabled` | Enviar el resumen a líderes (hoy `false`: la prueba es solo de ejecutivos) |
 | `schedule` | Horas de envío, solo días hábiles, margen de catch-up |
 

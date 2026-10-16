@@ -143,6 +143,7 @@ class MessageBuilder:
         leader: Person,
         members: list[ExecutiveReport],
         hide_members_without_overdue: bool = False,
+        max_tasks_per_member: int = 0,
     ) -> Message:
         tpl = self.t["lider"]
         values = self._person_values(leader)
@@ -163,18 +164,100 @@ class MessageBuilder:
         if values["total_vencidas"] == 0 and not ordered:
             blocks += _sections([render(tpl["sin_pendientes"], **values)])
         else:
-            lines = [
-                render(
-                    tpl["item_miembro"],
-                    ejecutivo=slack_escape(m.executive.name),
-                    email_ejecutivo=m.executive.email,
-                    total_vencidas=m.overdue_count,
-                    total_hoy=m.today_count,
-                )
-                for m in ordered
-            ]
+            lines: list[str] = []
+            for member in ordered:
+                if lines and max_tasks_per_member > 0:
+                    lines.append("")  # separa a cada ejecutivo cuando lleva detalle
+                lines += self._member_lines(member, max_tasks_per_member)
             # Todas las lineas en un solo texto: un section por miembro
             # pasaria el limite de 50 blocks de Slack con equipos grandes.
+            blocks += _sections(["\n".join(lines)])
+
+        blocks.append({"type": "divider"})
+        blocks.append(_context(render(tpl["pie"], **values)))
+        return render(tpl["texto_notificacion"], **values), blocks
+
+    def _member_lines(self, member: ExecutiveReport, max_tasks: int) -> list[str]:
+        """Linea con los totales del ejecutivo y, si max_tasks > 0, un breve
+        detalle de sus vencidas mas recientes y sus tareas de hoy."""
+        tpl = self.t["lider"]
+        lines = [
+            render(
+                tpl["item_miembro"],
+                ejecutivo=slack_escape(member.executive.name),
+                email_ejecutivo=member.executive.email,
+                total_vencidas=member.overdue_count,
+                total_hoy=member.today_count,
+            )
+        ]
+        if max_tasks <= 0:
+            return lines
+
+        for tasks, total, item_key, more_key in (
+            (member.overdue_tasks, member.overdue_count, "item_vencida_miembro", "mas_vencidas_miembro"),
+            (member.today_tasks, member.today_count, "item_hoy_miembro", "mas_hoy_miembro"),
+        ):
+            shown = tasks[:max_tasks]
+            lines += [render(tpl[item_key], **self._task_values(task)) for task in shown]
+            if total > len(shown):
+                lines.append(render(tpl[more_key], restantes=total - len(shown)))
+        return lines
+
+    # ------------------------------------------------------------------ #
+    #  Canal (resumen general por lider)                                  #
+    # ------------------------------------------------------------------ #
+    def channel_summary_message(
+        self,
+        groups: list[tuple[Optional[Person], list[ExecutiveReport]]],
+        show_members: bool = True,
+    ) -> Message:
+        """groups: (lider, ejecutivos a su cargo); lider None = sin lider."""
+        tpl = self.t["canal"]
+        members = [m for _, team in groups for m in team]
+        values = {
+            "fecha": self.today.strftime(self.date_fmt),
+            "fecha_hora": self.now.strftime(self.datetime_fmt),
+            "total_vencidas": sum(m.overdue_count for m in members),
+            "total_hoy": sum(m.today_count for m in members),
+            "total_lideres": sum(1 for leader, _ in groups if leader),
+            "total_ejecutivos": len(members),
+        }
+
+        blocks: list[dict] = [_header(render(tpl["header"], **values))]
+        blocks += _sections([render(tpl["intro"], **values), render(tpl["total_general"], **values)])
+        blocks.append({"type": "divider"})
+
+        def team_overdue(team: list[ExecutiveReport]) -> int:
+            return sum(m.overdue_count for m in team)
+
+        # Mas vencidas primero; "sin lider" siempre al final.
+        ordered = sorted(groups, key=lambda g: (g[0] is None, -team_overdue(g[1]), g[0].name if g[0] else ""))
+        lines: list[str] = []
+        for leader, team in ordered:
+            if lines and show_members:
+                lines.append("")
+            lines.append(
+                render(
+                    tpl["item_lider"],
+                    lider=slack_escape(leader.name) if leader else tpl["sin_lider"],
+                    email_lider=leader.email if leader else "",
+                    total_vencidas=team_overdue(team),
+                    total_hoy=sum(m.today_count for m in team),
+                    total_miembros=len(team),
+                )
+            )
+            if show_members:
+                for member in sorted(team, key=lambda m: (-m.overdue_count, m.executive.name)):
+                    lines.append(
+                        render(
+                            tpl["item_miembro"],
+                            ejecutivo=slack_escape(member.executive.name),
+                            email_ejecutivo=member.executive.email,
+                            total_vencidas=member.overdue_count,
+                            total_hoy=member.today_count,
+                        )
+                    )
+        if lines:
             blocks += _sections(["\n".join(lines)])
 
         blocks.append({"type": "divider"})
@@ -194,6 +277,12 @@ class MessageBuilder:
         )
         text, blocks = message
         return f"[PRUEBA → {recipient.name}] {text}", [_context(banner)] + blocks
+
+    def with_channel_test_banner(self, message: Message, channel_id: str) -> Message:
+        tpl = self.t["modo_prueba"]
+        banner = render(tpl["banner_canal"], canal=f"<#{channel_id}>" if channel_id else "(sin configurar)")
+        text, blocks = message
+        return f"[PRUEBA → canal] {text}", [_context(banner)] + blocks
 
     def _person_values(self, person: Person) -> dict:
         return {

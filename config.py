@@ -1,6 +1,7 @@
 import json as _json
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 _BASE_DIR = Path(__file__).parent
@@ -47,7 +48,10 @@ class Settings(BaseSettings):
     ejecutivotest1: str = ""
     ejecutivotest2: str = ""
     ejecutivotest3: str = ""
-    ejecutivotestsend1: str = ""
+    # En el .env puede llamarse Ejecutivotestsend1 o Ejecutivosendtest1.
+    ejecutivotestsend1: str = Field(
+        "", validation_alias=AliasChoices("ejecutivotestsend1", "ejecutivosendtest1")
+    )
 
     # Silencia los logs linea-por-linea de httpx/httpcore.
     quiet_http_logs: bool = True

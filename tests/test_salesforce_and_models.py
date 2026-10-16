@@ -43,3 +43,28 @@ def test_skip_reason_on_weekend_and_holiday(monkeypatch):
 def test_skip_reason_disabled(monkeypatch):
     monkeypatch.setitem(reminder.reminder_config, "schedule", {"business_days_only": False})
     assert reminder.skip_reason(datetime(2026, 10, 17, 8, 0, tzinfo=TZ)) is None
+
+
+def test_test_leader_groups_all_test_executives(monkeypatch):
+    import asyncio
+
+    from services.models import ExecutiveReport, Person
+
+    monkeypatch.setattr(reminder.settings, "ejecutivotestsend1", "Lider.Prueba@x.com")
+
+    class FakeSF:
+        async def find_active_users_by_emails(self, emails):
+            assert emails == ["lider.prueba@x.com"]
+            return []
+
+    reports = [
+        ExecutiveReport(executive=Person(f"005{i}", f"Ejecutivo {i}", "E", f"e{i}@x.com"), leader=None)
+        for i in range(3)
+    ]
+    groups = asyncio.run(reminder.test_leader_groups(FakeSF(), reports))
+
+    assert len(groups) == 1
+    leader, members = groups[0]
+    assert leader.email == "lider.prueba@x.com"
+    assert leader.first_name == "Lider"
+    assert members == reports

@@ -119,6 +119,31 @@ def group_by_leader(reports: list[ExecutiveReport]) -> list[tuple[Person, list[E
     return sorted(groups.values(), key=lambda group: group[0].name)
 
 
+async def leader_groups(
+    sf: SalesforceClient, reports: list[ExecutiveReport]
+) -> list[tuple[Person, list[ExecutiveReport]]]:
+    if settings.test_mode:
+        return await test_leader_groups(sf, reports)
+    return group_by_leader(reports)
+
+
+async def test_leader_groups(
+    sf: SalesforceClient, reports: list[ExecutiveReport]
+) -> list[tuple[Person, list[ExecutiveReport]]]:
+    """Modo prueba: todos los ejecutivos de prueba quedan a cargo de
+    Ejecutivotestsend1, que hace de lider (no su Manager real)."""
+    email = settings.ejecutivotestsend1.strip().lower()
+    if not email or not reports:
+        return []
+    users = await sf.find_active_users_by_emails([email])
+    if users:
+        leader = person_from_user(users[0])
+    else:
+        alias = email.split("@")[0]
+        leader = Person(id="test-leader", name=alias, first_name=alias.split(".")[0].capitalize(), email=email)
+    return [(leader, reports)]
+
+
 # ---------------------------------------------------------------------- #
 #  3. Envio                                                               #
 # ---------------------------------------------------------------------- #
@@ -161,6 +186,33 @@ class Dispatcher:
                 logger.error("[SLACK] No se pudo enviar %s de %s a %s (%s)", kind, recipient.name, label, target)
             await asyncio.sleep(self.delay)
 
+    async def deliver_to_channel(self, message: Message, channel_id: str, summary: RunSummary) -> None:
+        """Mensaje de canal. En modo prueba va solo al canal de pruebas."""
+        if settings.test_mode:
+            message = self.builder.with_channel_test_banner(message, channel_id)
+            label, target = "canal de pruebas", settings.slack_test_channel_id
+        else:
+            label, target = "canal de resumen", channel_id
+        if not target:
+            summary.failed += 1
+            logger.error(
+                "No hay canal para el resumen: configurar %s",
+                "SLACK_TEST_CHANNEL_ID en .env" if settings.test_mode else "channel_summary.channel_id en reminder_config.json",
+            )
+            return
+
+        if self.dry_run:
+            print(f"\n===== [DRY-RUN] resumen de canal → {label} ({target}) =====")
+            print(blocks_to_preview(*message))
+            return
+
+        if await self.slack.post_message(target, *message):
+            summary.sent += 1
+            logger.info("[SLACK] resumen de canal enviado a %s", label)
+        else:
+            summary.failed += 1
+            logger.error("[SLACK] No se pudo enviar el resumen de canal a %s (%s)", label, target)
+
     async def _send(self, target_type: str, target: str, message: Message) -> bool:
         text, blocks = message
         if target_type == "channel":
@@ -181,11 +233,15 @@ async def run_reminder(
     dry_run: bool = False,
     include_executives: bool = True,
     include_leaders: Optional[bool] = None,
+    include_channel: Optional[bool] = None,
     sf: Optional[SalesforceClient] = None,
     slack: Optional[SlackService] = None,
 ) -> RunSummary:
     if include_leaders is None:
         include_leaders = bool(reminder_config.get("leaders", {}).get("enabled"))
+    channel_cfg = reminder_config.get("channel_summary", {})
+    if include_channel is None:
+        include_channel = bool(channel_cfg.get("enabled"))
     if not settings.slack_notifications_enabled and not dry_run:
         logger.warning("SLACK_NOTIFICATIONS_ENABLED=false: se ejecuta en modo dry-run (sin enviar).")
         dry_run = True
@@ -218,11 +274,22 @@ async def run_reminder(
             await dispatcher.deliver(builder.executive_message(report), report.executive, "ejecutivo", summary)
 
     if include_leaders:
-        hide_zero = bool(reminder_config.get("leaders", {}).get("hide_members_without_overdue"))
-        for leader, members in group_by_leader(reports):
+        leaders_cfg = reminder_config.get("leaders", {})
+        hide_zero = bool(leaders_cfg.get("hide_members_without_overdue"))
+        max_tasks = int(leaders_cfg.get("max_tasks_per_member", 3))
+        for leader, members in await leader_groups(sf, reports):
             summary.leaders += 1
-            message = builder.leader_message(leader, members, hide_zero)
+            message = builder.leader_message(leader, members, hide_zero, max_tasks)
             await dispatcher.deliver(message, leader, "lider", summary)
+
+    if include_channel and reports:
+        groups: list[tuple[Optional[Person], list[ExecutiveReport]]] = list(await leader_groups(sf, reports))
+        grouped = {id(m) for _, team in groups for m in team}
+        without_leader = [r for r in reports if id(r) not in grouped]
+        if without_leader:
+            groups.append((None, without_leader))
+        message = builder.channel_summary_message(groups, bool(channel_cfg.get("show_members", True)))
+        await dispatcher.deliver_to_channel(message, (channel_cfg.get("channel_id") or "").strip(), summary)
 
     logger.info("Resumen de la ejecucion: %s", summary.as_dict())
     return summary

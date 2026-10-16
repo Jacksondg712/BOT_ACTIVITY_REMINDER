@@ -24,7 +24,19 @@
     "_comment": "Resumen a cada lider con la cantidad de vencidas de sus personas a cargo. En modo prueba va al canal de pruebas + Ejecutivotestsend1, nunca al lider real.",
     "enabled": false,
     "_comment_skip_zero": "true = no incluir en el resumen a los ejecutivos con 0 vencidas.",
-    "hide_members_without_overdue": false
+    "hide_members_without_overdue": false,
+    "_comment_max_tasks": "Cuantas vencidas (las mas recientes) y cuantas tareas de hoy se listan debajo de cada ejecutivo. 0 = solo los totales.",
+    "max_tasks_per_member": 3,
+    "_comment_test_leader": "En modo prueba los Ejecutivotest1..3 quedan todos a cargo de Ejecutivotestsend1 (Ejecutivosendtest1), que hace de lider."
+  },
+
+  "channel_summary": {
+    "_comment": "Resumen general en un canal: cada lider con las vencidas de su equipo. En modo prueba va solo al canal de pruebas (SLACK_TEST_CHANNEL_ID).",
+    "enabled": false,
+    "_comment_channel_id": "ID del canal de produccion (ej. C0123ABCD). El bot debe estar invitado al canal.",
+    "channel_id": "",
+    "_comment_show_members": "true = listar cada ejecutivo debajo de su lider; false = solo una linea por lider.",
+    "show_members": true
   },
 
   "schedule": {

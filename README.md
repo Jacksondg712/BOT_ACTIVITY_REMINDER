@@ -47,13 +47,15 @@ python -m venv .venv
 .venv\Scripts\python main.py --dry-run      # muestra los mensajes en consola, NO envía
 .venv\Scripts\python main.py                # envía el recordatorio ahora (una vez)
 .venv\Scripts\python main.py --solo lideres # solo el resumen de líderes
+.venv\Scripts\python main.py --forzar       # envía aunque hoy no sea día hábil
 .venv\Scripts\python main.py --schedule     # queda corriendo y envía a las horas programadas
 .venv\Scripts\python -m pytest -q           # pruebas
 ```
 
 `--schedule` envía en las horas de `reminder_config.json → schedule.times`
 (por defecto 08:00, solo días hábiles de Colombia). Alternativa: no usar
-`--schedule` y programar `main.py` con el Programador de tareas de Windows.
+`--schedule` y programar `main.py` con el Programador de tareas de Windows:
+en sábados, domingos y festivos no envía nada (salvo `--forzar`).
 
 ## Editar los mensajes — `message_templates.json`
 

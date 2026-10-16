@@ -13,8 +13,7 @@ from pathlib import Path
 from typing import Optional
 
 from config import reminder_config
-from services.reminder import local_now, run_reminder
-from utils.business_days import non_business_reason
+from services.reminder import local_now, run_reminder, skip_reason
 
 logger = logging.getLogger(__name__)
 
@@ -72,10 +71,8 @@ class ReminderScheduler:
         now = local_now()
         day_key = now.date().isoformat()
 
-        if schedule.get("business_days_only", True):
-            reason = non_business_reason(now.date())
-            if reason:
-                return
+        if skip_reason(now):
+            return
 
         state = _load_state()
         sent_today = state.get(day_key, [])

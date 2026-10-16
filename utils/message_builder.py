@@ -173,7 +173,9 @@ class MessageBuilder:
                 )
                 for m in ordered
             ]
-            blocks += _sections(lines)
+            # Todas las lineas en un solo texto: un section por miembro
+            # pasaria el limite de 50 blocks de Slack con equipos grandes.
+            blocks += _sections(["\n".join(lines)])
 
         blocks.append({"type": "divider"})
         blocks.append(_context(render(tpl["pie"], **values)))

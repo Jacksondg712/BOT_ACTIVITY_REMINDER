@@ -133,3 +133,19 @@ def test_block_count_stays_under_slack_limit():
     for block in blocks:
         if block["type"] == "section":
             assert len(block["text"]["text"]) <= 3000
+
+
+def test_leader_message_with_big_team_stays_under_slack_limit():
+    members = []
+    for i in range(120):
+        member = _report(overdue=i, today=1)
+        member.executive = Person(f"005{i}", f"Ejecutivo {i:03d}", "Ejecutivo", f"e{i}@x.com")
+        members.append(member)
+    _, blocks = _builder().leader_message(members[0].leader, members)
+
+    assert len(blocks) <= 50
+    body = _all_text(blocks)
+    assert "Ejecutivo 000" in body and "Ejecutivo 119" in body
+    for block in blocks:
+        if block["type"] == "section":
+            assert len(block["text"]["text"]) <= 3000

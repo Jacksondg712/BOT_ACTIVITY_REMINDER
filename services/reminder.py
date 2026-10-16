@@ -22,6 +22,7 @@ from config import message_templates, reminder_config, settings
 from services.models import ExecutiveReport, Person, TaskItem, leader_from_user, person_from_user
 from services.salesforce_client import SalesforceClient
 from services.slack_service import SlackService
+from utils.business_days import non_business_reason
 from utils.message_builder import Message, MessageBuilder, blocks_to_preview
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,14 @@ class RunSummary:
 
 def local_now() -> datetime:
     return datetime.now(ZoneInfo(reminder_config.get("timezone", "America/Bogota")))
+
+
+def skip_reason(now: Optional[datetime] = None) -> Optional[str]:
+    """Por que no se debe enviar hoy ('sabado', 'domingo' o el festivo), o
+    None si toca enviar. Respeta schedule.business_days_only."""
+    if not reminder_config.get("schedule", {}).get("business_days_only", True):
+        return None
+    return non_business_reason((now or local_now()).date())
 
 
 # ---------------------------------------------------------------------- #

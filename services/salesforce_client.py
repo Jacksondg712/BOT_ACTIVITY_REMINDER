@@ -150,10 +150,15 @@ class SalesforceClient:
     #  URLs                                                               #
     # ------------------------------------------------------------------ #
     def record_url(self, sobject: str, record_id: str) -> str:
-        return f"{self._base}/lightning/r/{sobject}/{record_id}/view"
+        return f"{self._links_base()}/lightning/r/{sobject}/{record_id}/view"
 
     def tasks_home_url(self) -> str:
-        return f"{self._base}/lightning/o/Task/home"
+        return f"{self._links_base()}/lightning/o/Task/home"
+
+    def _links_base(self) -> str:
+        # La instancia que devuelve el login es la real; SALESFORCE_BASE_URL
+        # puede haber quedado con el valor de ejemplo del .env.
+        return self._session.instance_url if self._session else self._base
 
     # ------------------------------------------------------------------ #
     #  HTTP / login                                                       #

@@ -8,6 +8,7 @@ Uso:
 
 Filtros:
     --solo ejecutivos | lideres   # enviar solo un tipo de mensaje
+    --forzar                      # enviar aunque hoy no sea dia habil
 """
 
 import argparse
@@ -73,6 +74,7 @@ def main() -> int:
     parser.add_argument("--schedule", action="store_true", help="quedar corriendo y enviar a las horas programadas")
     parser.add_argument("--check", action="store_true", help="verificar conexion a Salesforce y Slack")
     parser.add_argument("--solo", choices=["ejecutivos", "lideres"], help="enviar solo un tipo de mensaje")
+    parser.add_argument("--forzar", action="store_true", help="enviar aunque hoy no sea dia habil")
     args = parser.parse_args()
 
     if args.check:
@@ -87,7 +89,14 @@ def main() -> int:
             logger.info("Scheduler detenido.")
         return 0
 
-    from services.reminder import run_reminder
+    from services.reminder import run_reminder, skip_reason
+
+    # Sin --schedule (p. ej. desde el Programador de tareas de Windows) tambien
+    # se respetan los dias habiles; --dry-run siempre muestra los mensajes.
+    reason = None if (args.forzar or args.dry_run) else skip_reason()
+    if reason:
+        logger.info("Hoy no es dia habil (%s): no se envia nada. Usar --forzar para enviar igual.", reason)
+        return 0
 
     include_executives = args.solo != "lideres"
     include_leaders = True if args.solo == "lideres" else (False if args.solo == "ejecutivos" else None)

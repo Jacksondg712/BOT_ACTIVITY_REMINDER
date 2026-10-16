@@ -67,6 +67,9 @@ def leader_from_user(record: dict[str, Any]) -> Optional[Person]:
     manager = record.get("Manager") or {}
     if not record.get("ManagerId") or not manager:
         return None
+    # Un Manager desactivado en Salesforce ya no recibe el resumen.
+    if manager.get("IsActive") is False:
+        return None
     name = manager.get("Name") or ""
     return Person(
         id=record["ManagerId"],

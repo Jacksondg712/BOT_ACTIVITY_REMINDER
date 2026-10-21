@@ -88,6 +88,19 @@ class SalesforceClient:
             "ORDER BY Name ASC"
         )
 
+    async def find_active_users_by_keyword(self, keyword: str) -> list[dict[str, Any]]:
+        """Usuarios activos cuyo rol o perfil contiene `keyword` (ej. 'B2B')."""
+        logger.info("SF find_active_users_by_keyword: %s", keyword)
+        if not keyword:
+            return []
+        pattern = _soql_quote(f"%{keyword}%")
+        return await self.query_all(
+            f"SELECT {_USER_FIELDS} FROM User "
+            "WHERE IsActive = true AND UserType = 'Standard' "
+            f"AND (UserRole.Name LIKE {pattern} OR Profile.Name LIKE {pattern}) "
+            "ORDER BY Name ASC"
+        )
+
     # ------------------------------------------------------------------ #
     #  Tareas                                                             #
     # ------------------------------------------------------------------ #

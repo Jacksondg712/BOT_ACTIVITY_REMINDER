@@ -210,6 +210,7 @@ class MessageBuilder:
         self,
         groups: list[tuple[Optional[Person], list[ExecutiveReport]]],
         show_members: bool = True,
+        max_members: int = 0,
     ) -> Message:
         """groups: (lider, ejecutivos a su cargo); lider None = sin lider."""
         tpl = self.t["canal"]
@@ -247,7 +248,9 @@ class MessageBuilder:
                 )
             )
             if show_members:
-                for member in sorted(team, key=lambda m: (-m.overdue_count, m.executive.name)):
+                ranked = sorted(team, key=lambda m: (-m.overdue_count, m.executive.name))
+                shown = ranked[:max_members] if max_members > 0 else ranked
+                for member in shown:
                     lines.append(
                         render(
                             tpl["item_miembro"],
@@ -257,6 +260,8 @@ class MessageBuilder:
                             total_hoy=member.today_count,
                         )
                     )
+                if len(ranked) > len(shown):
+                    lines.append(render(tpl.get("mas_miembros", "      _…y {restantes} más_"), restantes=len(ranked) - len(shown)))
         if lines:
             blocks += _sections(["\n".join(lines)])
 

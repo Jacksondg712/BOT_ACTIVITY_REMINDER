@@ -61,6 +61,8 @@
     "item_lider": "*{lider}* — equipo de {total_miembros}: :red_circle: {total_vencidas} vencidas · :large_blue_circle: {total_hoy} para hoy",
     "_variables_miembro": "ejecutivo, email_ejecutivo, total_vencidas, total_hoy",
     "item_miembro": "      ◦ {ejecutivo}: {total_vencidas} vencidas · {total_hoy} para hoy",
+    "_variables_mas_miembros": "restantes",
+    "mas_miembros": "      _…y {restantes} ejecutivos más_",
     "sin_lider": "Sin líder asignado",
 
     "pie": "_Mensaje automático de BOT_ACTIVITY_REMINDER · {fecha_hora}_",

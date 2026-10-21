@@ -1,8 +1,11 @@
 """Flujo completo del recordatorio:
 
-1. Trae de Salesforce a los ejecutivos (modo prueba: Ejecutivotest1..3 del
-   .env; produccion: usuarios activos con Title en reminder_config.json) y a
-   su lider (Manager del usuario).
+1. Trae de Salesforce a los ejecutivos y a su lider (Manager del usuario):
+   - Ejecutivotest1..3 del .env, si TEST_MODE=true y estan configurados.
+   - Si no: usuarios activos con Title en executive_titles o, si esa lista
+     esta vacia, todos los del rol/perfil 'b2b_keyword' (reminder_config.json).
+     Se quitan los TITULOS_BLOQUEADOS del .env, quien no tenga lider y
+     quien tenga personas a cargo (cuenta solo como lider).
 2. Cuenta sus Tasks abiertas vencidas y del dia, y trae el detalle de las
    primeras N de cada una.
 3. Arma los mensajes con message_templates.json y los envia:
@@ -58,10 +61,59 @@ def skip_reason(now: Optional[datetime] = None) -> Optional[str]:
 # ---------------------------------------------------------------------- #
 #  1-2. Extraccion de Salesforce                                          #
 # ---------------------------------------------------------------------- #
-async def collect_reports(sf: SalesforceClient, now: datetime, summary: RunSummary) -> list[ExecutiveReport]:
+def filter_executives(
+    users: list[dict],
+    blocked_titles: set[str],
+    require_leader: bool,
+    exclude_leaders: bool = False,
+) -> list[dict]:
+    """Quita los titulos bloqueados, (opcional) a quien no tiene un lider
+    activo en Salesforce y (opcional) a quien tiene personas a cargo: ese
+    cuenta solo como lider, no como ejecutivo del equipo de su jefe."""
+    leader_ids = {user.get("ManagerId") for user in users} if exclude_leaders else set()
+    kept = []
+    for user in users:
+        if user["Id"] in leader_ids:
+            continue
+        if (user.get("Title") or "").strip().lower() in blocked_titles:
+            continue
+        if require_leader and not leader_from_user(user):
+            continue
+        kept.append(user)
+    return kept
+
+
+async def find_executives(sf: SalesforceClient) -> list[dict]:
+    titles = reminder_config.get("executive_titles") or []
+    if titles:
+        users = await sf.find_active_users_by_titles(titles)
+    else:
+        users = await sf.find_active_users_by_keyword(reminder_config.get("b2b_keyword", "B2B"))
+    kept = filter_executives(
+        users,
+        settings.blocked_titles,
+        bool(reminder_config.get("exclude_without_leader", True)),
+        bool(reminder_config.get("leaders_are_not_executives", True)),
+    )
+    logger.info(
+        "Ejecutivos: %s usuarios encontrados, %s despues de quitar titulos bloqueados, sin lider y lideres",
+        len(users),
+        len(kept),
+    )
+    return kept
+
+
+async def collect_reports(
+    sf: SalesforceClient,
+    now: datetime,
+    summary: RunSummary,
+    with_details: bool = True,
+) -> list[ExecutiveReport]:
+    """`with_details=False` solo cuenta (para el resumen del canal no hace
+    falta traer el detalle de cada tarea)."""
     today = now.date()
 
-    if settings.test_mode:
+    if settings.use_test_executives:
         emails = settings.test_executive_emails
         if not emails:
             raise RuntimeError("TEST_MODE=true pero no hay Ejecutivotest1..3 configurados en .env")
@@ -71,7 +123,7 @@ async def collect_reports(sf: SalesforceClient, now: datetime, summary: RunSumma
         for email in summary.missing_users:
             logger.warning("Ejecutivo de prueba %s no existe o no esta activo en Salesforce", email)
     else:
-        users = await sf.find_active_users_by_titles(reminder_config.get("executive_titles", []))
+        users = await find_executives(sf)
 
     if not users:
         logger.warning("No se encontraron ejecutivos para procesar.")
@@ -91,6 +143,8 @@ async def collect_reports(sf: SalesforceClient, now: datetime, summary: RunSumma
             overdue_count=user_counts.get("overdue", 0),
             today_count=user_counts.get("today", 0),
         )
+        if not with_details:
+            return report
         async with semaphore:
             if report.overdue_count and max_overdue > 0:
                 records = await sf.find_overdue_tasks(user["Id"], today, max_overdue, newest_first)
@@ -122,7 +176,7 @@ def group_by_leader(reports: list[ExecutiveReport]) -> list[tuple[Person, list[E
 async def leader_groups(
     sf: SalesforceClient, reports: list[ExecutiveReport]
 ) -> list[tuple[Person, list[ExecutiveReport]]]:
-    if settings.test_mode:
+    if settings.use_test_executives:
         return await test_leader_groups(sf, reports)
     return group_by_leader(reports)
 
@@ -258,7 +312,7 @@ async def run_reminder(
         " (dry-run)" if dry_run else "",
     )
 
-    reports = await collect_reports(sf, now, summary)
+    reports = await collect_reports(sf, now, summary, with_details=include_executives or include_leaders)
     summary.executives = len(reports)
 
     tasks_url = (reminder_config.get("salesforce_tasks_url") or "").strip() or sf.tasks_home_url()
@@ -288,7 +342,11 @@ async def run_reminder(
         without_leader = [r for r in reports if id(r) not in grouped]
         if without_leader:
             groups.append((None, without_leader))
-        message = builder.channel_summary_message(groups, bool(channel_cfg.get("show_members", True)))
+        message = builder.channel_summary_message(
+            groups,
+            bool(channel_cfg.get("show_members", True)),
+            int(channel_cfg.get("max_members_per_leader", 0)),
+        )
         await dispatcher.deliver_to_channel(message, (channel_cfg.get("channel_id") or "").strip(), summary)
 
     logger.info("Resumen de la ejecucion: %s", summary.as_dict())

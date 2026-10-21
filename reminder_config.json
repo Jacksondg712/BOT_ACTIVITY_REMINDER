@@ -6,8 +6,13 @@
   "_comment_tasks_url": "Link de Salesforce que se usa en {url_tareas} ('Ver mis tareas' y '...y N mas'). Vacio = pagina de inicio de Tareas.",
   "salesforce_tasks_url": "https://openeducation.lightning.force.com/lightning/o/Task/list?filterName=Overdue_Tasks",
 
-  "_comment_executives": "Quienes son 'ejecutivos' en PRODUCCION (TEST_MODE=false): usuarios activos de Salesforce cuyo Title este en esta lista. En modo prueba se ignora y se usan solo Ejecutivotest1..3 del .env. Su lider es el Manager del usuario en Salesforce.",
-  "executive_titles": ["Sales Development Representative"],
+  "_comment_executives": "Quienes son 'ejecutivos': si executive_titles tiene titulos, solo los usuarios activos con esos Title; si esta vacia, todos los usuarios activos cuyo rol o perfil contiene b2b_keyword. A ambos casos se les quitan los TITULOS_BLOQUEADOS del .env. Su lider es el Manager del usuario en Salesforce. Si TEST_MODE=true y hay Ejecutivotest1..3 en .env, se usan solo esos.",
+  "executive_titles": [],
+  "b2b_keyword": "B2B",
+  "_comment_without_leader": "true = no incluir a quien no tenga Manager activo en Salesforce.",
+  "exclude_without_leader": true,
+  "_comment_leaders": "true = quien tiene personas a cargo en Salesforce cuenta solo como lider: no aparece como ejecutivo en el equipo de su propio jefe ni recibe el recordatorio de ejecutivo.",
+  "leaders_are_not_executives": true,
 
   "_comment_overdue": "Vencida = Task abierta (IsClosed = false) con ActivityDate anterior a hoy. Del dia = Task abierta con ActivityDate = hoy. 'Hoy' se calcula en 'timezone'.",
   "_comment_max_items": "Cuantas actividades se listan por seccion en el mensaje. El total siempre se muestra; si hay mas, se agrega la linea 'mas_items' de message_templates.json. Slack no permite mensajes gigantes, no subir de ~25.",
@@ -36,7 +41,9 @@
     "_comment_channel_id": "ID del canal de produccion (ej. C0123ABCD). El bot debe estar invitado al canal.",
     "channel_id": "",
     "_comment_show_members": "true = listar cada ejecutivo debajo de su lider; false = solo una linea por lider.",
-    "show_members": true
+    "show_members": true,
+    "_comment_max_members": "Cuantos ejecutivos se listan debajo de cada lider (los de mas vencidas primero). 0 = todos. El resto se resume con 'mas_miembros' de message_templates.json.",
+    "max_members_per_leader": 3
   },
 
   "schedule": {

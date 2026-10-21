@@ -39,7 +39,14 @@ class Settings(BaseSettings):
     # --- Scopes: chat:write, im:write, users:read, users:read.email). ---
     slack_bot_token: str = ""
     slack_notifications_enabled: bool = True
-    slack_test_channel_id: str = ""
+    # Canal de pruebas. En el .env puede llamarse SLACK_TEST_CHANNEL_ID o SLACK_CHANNEL_ID.
+    slack_test_channel_id: str = Field(
+        "", validation_alias=AliasChoices("slack_test_channel_id", "slack_channel_id")
+    )
+
+    # Titulos de Salesforce que NUNCA reciben recordatorio ni cuentan como
+    # ejecutivos, separados por coma (ej. operaciones, direccion).
+    titulos_bloqueados: str = ""
 
     # --- Modo prueba: solo se procesan los Ejecutivotest*, y sus mensajes ---
     # --- van al canal de pruebas + DM a Ejecutivotestsend1 (no al dueño ---
@@ -64,6 +71,17 @@ class Settings(BaseSettings):
     def test_executive_emails(self) -> list[str]:
         emails = [self.ejecutivotest1, self.ejecutivotest2, self.ejecutivotest3]
         return [email.strip().lower() for email in emails if email and email.strip()]
+
+    @property
+    def use_test_executives(self) -> bool:
+        """Modo prueba con Ejecutivotest1..3 configurados. Si TEST_MODE=true
+        pero no hay ninguno, se usa la poblacion real (los envios siguen
+        yendo solo a los destinos de prueba)."""
+        return self.test_mode and bool(self.test_executive_emails)
+
+    @property
+    def blocked_titles(self) -> set[str]:
+        return {title.strip().lower() for title in self.titulos_bloqueados.split(",") if title.strip()}
 
 
 settings = Settings()

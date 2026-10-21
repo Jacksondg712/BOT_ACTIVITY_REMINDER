@@ -206,3 +206,17 @@ def test_channel_test_banner_names_production_channel():
     text, blocks = _builder().with_channel_test_banner(message, "C123")
     assert text.startswith("[PRUEBA")
     assert "<#C123>" in blocks[0]["elements"][0]["text"]
+
+
+def test_channel_summary_shows_top_members_by_overdue():
+    leader = Person("005L", "Edna Guerrero", "Edna", "edna@x.com")
+    team = []
+    for i, overdue in enumerate([5, 50, 1, 30, 10]):
+        report = _report(overdue=overdue)
+        report.executive = Person(f"005{i}", f"Ejecutivo {overdue}", "E", f"e{i}@x.com")
+        team.append(report)
+    _, blocks = _builder().channel_summary_message([(leader, team)], show_members=True, max_members=3)
+    body = _all_text(blocks)
+    assert body.index("Ejecutivo 50") < body.index("Ejecutivo 30") < body.index("Ejecutivo 10")
+    assert "Ejecutivo 5:" not in body and "Ejecutivo 1:" not in body
+    assert "…y 2 ejecutivos más" in body
